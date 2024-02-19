@@ -18,13 +18,13 @@ change-title-escapes: '\<*_&' # You can add # and @ to disable mentions, and add
 version-resolver:
   major:
     labels:
-      - 'membership-major'
+      - 'major'
   minor:
     labels:
-      - 'membership-minor'
+      - 'minor'
   patch:
     labels:
-      - 'membership-bugfix'
+      - 'bugfix'
   default: patch
 template: |
   ## Changes
