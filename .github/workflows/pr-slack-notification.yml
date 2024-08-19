@@ -47,7 +47,7 @@ jobs:
               isManualTrigger: '${{ github.event_name }}' === 'workflow_dispatch'
             })
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_URL: ${{ secrets.WEB_HOOK_URL }}
           TIMEZONE: 'Asia/Seoul'
           WORK_HOURS_START: '9'
           WORK_HOURS_END: '18'
