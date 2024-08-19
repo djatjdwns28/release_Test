@@ -42,14 +42,13 @@ jobs:
       - name: Install Dependencies
         run: |
           cd .github/slack_notification
-          npm install --only=production
+          npm ci --only=production
 
       - name: Send Slack Notification
         uses: actions/github-script@v7
         with:
           github-token: ${{secrets.GITHUB_TOKEN}}
           script: |
-            const fs = require('fs');
             const path = require('path');
             
             // Add the isolated package directory to the module search path
@@ -57,9 +56,7 @@ jobs:
             require('module').Module._initPaths();
             
             const scriptPath = path.join(process.env.GITHUB_WORKSPACE, '.github', 'scripts', 'slack-notification.js');
-            const scriptContent = fs.readFileSync(scriptPath, 'utf8');
-            
-            const sendSlackNotification = eval(`(async () => { ${scriptContent}; return sendSlackNotification; })()`);
+            const { sendSlackNotification } = require(scriptPath);
             
             const reviewers = context.payload.pull_request.requested_reviewers
               ? context.payload.pull_request.requested_reviewers.map(reviewer => reviewer.login)
