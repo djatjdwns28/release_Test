@@ -4,8 +4,6 @@ on:
   pull_request:
     types: [opened, reopened, ready_for_review]
     branches: [ main ]
-  issue_comment:
-    types: [created]
 
 jobs:
   notify:
@@ -19,37 +17,34 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Create temporary directory and package.json
+      - name: Create temporary package.json
         run: |
-          mkdir -p temp
           echo '{
             "name": "slack-notification",
             "version": "1.0.0",
             "dependencies": {
               "axios": "^0.21.1",
               "moment-timezone": "^0.5.33"
-            }
-          }' > temp/package.json
+            },
+            "type": "module"
+          }' > temp-package.json
 
       - name: Install Dependencies
         run: npm install --omit=dev
-        working-directory: ./temp
+        working-directory: ./
 
       - name: Send Slack Notification
         uses: actions/github-script@v6
         with:
           github-token: ${{secrets.GIT_TOKEN}}
           script: |
-            const fs = require('fs')
-            const path = require('path')
+            const fs = require('fs');
+            const path = require('path');
             
-            const scriptPath = path.join(process.env.GITHUB_WORKSPACE, '.github', 'scripts', 'slack-notification.js')
-            const script = fs.readFileSync(scriptPath, 'utf8')
+            const scriptPath = path.join(process.env.GITHUB_WORKSPACE, '.github', 'scripts', 'slack-notification.js');
+            const script = fs.readFileSync(scriptPath, 'utf8');
             
-            // Add the temp directory to the module search path
-            module.paths.unshift(path.join(process.env.GITHUB_WORKSPACE, 'temp', 'node_modules'))
-            
-            eval(script)
+            const { sendSlackNotification } = await import(`data:text/javascript,${encodeURIComponent(script)}`);
             
             let reviewers = [];
             if (context.payload.pull_request && context.payload.pull_request.requested_reviewers) {
@@ -62,7 +57,7 @@ jobs:
               reviewers: reviewers,
               customMessage: context.payload.pull_request ? context.payload.pull_request.title : '',
               isManualTrigger: false
-            })
+            });
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.WEB_HOOK_URL }}
           TIMEZONE: 'Asia/Seoul'
@@ -71,4 +66,4 @@ jobs:
 
       - name: Clean up
         if: always()
-        run: rm -rf temp
+        run: rm -rf temp-package.json node_modules
