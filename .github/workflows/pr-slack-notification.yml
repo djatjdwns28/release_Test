@@ -4,6 +4,8 @@ on:
   pull_request:
     types: [opened, reopened, ready_for_review]
     branches: [ main ]
+  issue_comment:
+    types: [created]
 
 jobs:
   notify:
@@ -17,8 +19,9 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Create temporary package.json
+      - name: Create temporary directory and package.json
         run: |
+          mkdir -p temp
           echo '{
             "name": "slack-notification",
             "version": "1.0.0",
@@ -26,10 +29,11 @@ jobs:
               "axios": "^0.21.1",
               "moment-timezone": "^0.5.33"
             }
-          }' > temp-package.json
+          }' > temp/package.json
 
       - name: Install Dependencies
-        run: npm install --only=prod --prefix ./temp
+        run: npm install --omit=dev
+        working-directory: ./temp
 
       - name: Send Slack Notification
         uses: actions/github-script@v6
@@ -67,4 +71,4 @@ jobs:
 
       - name: Clean up
         if: always()
-        run: rm -rf temp-package.json temp
+        run: rm -rf temp
