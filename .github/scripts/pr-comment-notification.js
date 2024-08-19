@@ -15,16 +15,8 @@ async function sendPRCommentNotification({ webhook, context }) {
     const event = context.payload
     let prNumber, commentUrl, commentBody, commenter, prTitle, prUrl, isReview, reviewState
 
-    if (context.eventName === 'pull_request_review_comment') {
-        prNumber = event.pull_request.number
-        commentUrl = event.comment.html_url
-        commentBody = event.comment.body
-        commenter = event.comment.user.login
-        prTitle = event.pull_request.title
-        prUrl = event.pull_request.html_url
-        isReview = true
-        reviewState = event.pull_request.review.state
-    } else if (context.eventName === 'pull_request_review') {
+    if (event.review) {
+        // This is a pull_request_review event
         prNumber = event.pull_request.number
         commentUrl = event.review.html_url
         commentBody = event.review.body
@@ -33,14 +25,30 @@ async function sendPRCommentNotification({ webhook, context }) {
         prUrl = event.pull_request.html_url
         isReview = true
         reviewState = event.review.state
+    } else if (event.comment) {
+        if (event.issue) {
+            // This is an issue_comment event on a PR
+            prNumber = event.issue.number
+            commentUrl = event.comment.html_url
+            commentBody = event.comment.body
+            commenter = event.comment.user.login
+            prTitle = event.issue.title
+            prUrl = event.issue.pull_request.html_url
+            isReview = false
+        } else {
+            // This is a pull_request_review_comment event
+            prNumber = event.pull_request.number
+            commentUrl = event.comment.html_url
+            commentBody = event.comment.body
+            commenter = event.comment.user.login
+            prTitle = event.pull_request.title
+            prUrl = event.pull_request.html_url
+            isReview = true
+            reviewState = 'commented'
+        }
     } else {
-        prNumber = event.issue.number
-        commentUrl = event.comment.html_url
-        commentBody = event.comment.body
-        commenter = event.comment.user.login
-        prTitle = event.issue.title
-        prUrl = event.issue.pull_request.html_url
-        isReview = false
+        console.error('Unexpected event payload structure')
+        return
     }
 
     const reviewStateEmoji = {
