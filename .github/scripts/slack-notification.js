@@ -80,7 +80,7 @@ async function sendSlackNotification({ webhook, context, reviewers, customMessag
         type: "section",
         text: {
           type: "mrkdwn",
-          text: `*리뷰어:* @here}`
+          text: `*리뷰어:* @here`
         }
       },
       {
