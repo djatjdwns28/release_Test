@@ -13,53 +13,13 @@ async function sendSlackNotification(webhook, message) {
 
 async function sendPRCommentNotification({ webhook, context }) {
     const event = context.payload
-    let prNumber, commentUrl, commentBody, commenter, prTitle, prUrl, isReview, reviewState
 
-    if (event.review) {
-        // This is a pull_request_review event
-        prNumber = event.pull_request.number
-        commentUrl = event.review.html_url
-        commentBody = event.review.body
-        commenter = event.review.user.login
-        prTitle = event.pull_request.title
-        prUrl = event.pull_request.html_url
-        isReview = true
-        reviewState = event.review.state
-    } else if (event.comment) {
-        if (event.issue) {
-            // This is an issue_comment event on a PR
-            prNumber = event.issue.number
-            commentUrl = event.comment.html_url
-            commentBody = event.comment.body
-            commenter = event.comment.user.login
-            prTitle = event.issue.title
-            prUrl = event.issue.pull_request.html_url
-            isReview = false
-        } else {
-            // This is a pull_request_review_comment event
-            prNumber = event.pull_request.number
-            commentUrl = event.comment.html_url
-            commentBody = event.comment.body
-            commenter = event.comment.user.login
-            prTitle = event.pull_request.title
-            prUrl = event.pull_request.html_url
-            isReview = true
-            reviewState = 'commented'
-        }
-    } else {
-        console.error('Unexpected event payload structure')
-        return
-    }
-
-    const reviewStateEmoji = {
-        approved: ':white_check_mark:',
-        changes_requested: ':x:',
-        commented: ':speech_balloon:',
-    }
-
-    const headerText = isReview
-        ? `${reviewStateEmoji[reviewState] || ':speech_balloon:'} New Review on PR #${prNumber}`
-        : `:speech_balloon: New Comment on PR #${prNumber}`
+    const prNumber = event.issue.number
+    const commentUrl = event.comment.html_url
+    const commentBody = event.comment.body
+    const commenter = event.comment.user.login
+    const prTitle = event.issue.title
+    const prUrl = event.issue.pull_request.html_url
 
     const message = {
         blocks: [
@@ -67,7 +27,7 @@ async function sendPRCommentNotification({ webhook, context }) {
                 type: "header",
                 text: {
                     type: "plain_text",
-                    text: headerText,
+                    text: `:speech_balloon: New Comment on PR #${prNumber}`,
                     emoji: true
                 }
             },
@@ -80,47 +40,31 @@ async function sendPRCommentNotification({ webhook, context }) {
                     },
                     {
                         type: "mrkdwn",
-                        text: `*${isReview ? 'Reviewer' : 'Commenter'}:*\n${commenter}`
+                        text: `*Commenter:*\n${commenter}`
+                    }
+                ]
+            },
+            {
+                type: "section",
+                text: {
+                    type: "mrkdwn",
+                    text: `*Comment:*\n${commentBody.length > 200 ? commentBody.substring(0, 197) + '...' : commentBody}`
+                }
+            },
+            {
+                type: "divider"
+            },
+            {
+                type: "context",
+                elements: [
+                    {
+                        type: "mrkdwn",
+                        text: `<${prUrl}|View PR> • <${commentUrl}|View Comment>`
                     }
                 ]
             }
         ]
     }
-
-    if (isReview && reviewState) {
-        message.blocks.push({
-            type: "section",
-            text: {
-                type: "mrkdwn",
-                text: `*Review State:* ${reviewState.replace('_', ' ').charAt(0).toUpperCase() + reviewState.slice(1)}`
-            }
-        })
-    }
-
-    if (commentBody) {
-        message.blocks.push({
-            type: "section",
-            text: {
-                type: "mrkdwn",
-                text: `*${isReview ? 'Review Comment' : 'Comment'}:*\n${commentBody.length > 200 ? commentBody.substring(0, 197) + '...' : commentBody}`
-            }
-        })
-    }
-
-    message.blocks.push(
-        {
-            type: "divider"
-        },
-        {
-            type: "context",
-            elements: [
-                {
-                    type: "mrkdwn",
-                    text: `<${prUrl}|View PR> • <${commentUrl}|View ${isReview ? 'Review' : 'Comment'}>`
-                }
-            ]
-        }
-    )
 
     await sendSlackNotification(webhook, message)
 }
