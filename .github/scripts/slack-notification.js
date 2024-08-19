@@ -1,15 +1,15 @@
-const axios = require('axios');
-const moment = require('moment-timezone');
+import axios from 'axios';
+import moment from 'moment-timezone';
 
 async function isWorkingDay(date, timezone) {
-  const formattedDate = date.format('YYYY-MM-DD')
+  const formattedDate = date.format('YYYY-MM-DD');
   try {
-    const response = await axios.get(`https://date.nager.at/api/v3/publicholidays/${date.year()}/KR`)
-    const holidays = response.data.map(holiday => holiday.date)
-    return !holidays.includes(formattedDate) && ![0, 6].includes(date.day())
+    const response = await axios.get(`https://date.nager.at/api/v3/publicholidays/${date.year()}/KR`);
+    const holidays = response.data.map(holiday => holiday.date);
+    return !holidays.includes(formattedDate) && ![0, 6].includes(date.day());
   } catch (error) {
-    console.error('Error fetching holiday data:', error)
-    return ![0, 6].includes(date.day()) // Fallback to just weekend check
+    console.error('Error fetching holiday data:', error);
+    return ![0, 6].includes(date.day()); // Fallback to just weekend check
   }
 }
 

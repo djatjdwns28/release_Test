@@ -26,7 +26,8 @@ jobs:
             "dependencies": {
               "axios": "^0.21.1",
               "moment-timezone": "^0.5.33"
-            }
+            },
+            "type": "module"
           }' > temp_slack_notification/package.json
 
       - name: Install Dependencies
@@ -39,15 +40,17 @@ jobs:
           script: |
             const fs = require('fs');
             const path = require('path');
+            const { createRequire } = await import('module');
             
+            const require = createRequire(import.meta.url);
             const scriptPath = path.join(process.env.GITHUB_WORKSPACE, '.github', 'scripts', 'slack-notification.js');
-            const script = fs.readFileSync(scriptPath, 'utf8');
+            const scriptContent = fs.readFileSync(scriptPath, 'utf8');
             
             // Add the temp directory to the module search path
             process.env.NODE_PATH = path.join(process.env.GITHUB_WORKSPACE, 'temp_slack_notification', 'node_modules');
             require('module').Module._initPaths();
             
-            const { sendSlackNotification } = await import(`data:text/javascript,${encodeURIComponent(script)}`);
+            const { sendSlackNotification } = await import(`data:text/javascript,${encodeURIComponent(scriptContent)}`);
             
             let reviewers = [];
             if (context.payload.pull_request && context.payload.pull_request.requested_reviewers) {
