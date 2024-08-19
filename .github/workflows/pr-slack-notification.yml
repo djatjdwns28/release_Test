@@ -17,8 +17,9 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Create temporary package.json
+      - name: Create temporary directory and package.json
         run: |
+          mkdir -p temp_slack_notification
           echo '{
             "name": "slack-notification",
             "version": "1.0.0",
@@ -27,11 +28,10 @@ jobs:
               "moment-timezone": "^0.5.33"
             },
             "type": "module"
-          }' > temp-package.json
+          }' > temp_slack_notification/package.json
 
       - name: Install Dependencies
-        run: npm install --omit=dev
-        working-directory: ./
+        run: npm install --omit=dev --prefix ./temp_slack_notification
 
       - name: Send Slack Notification
         uses: actions/github-script@v6
@@ -43,6 +43,10 @@ jobs:
             
             const scriptPath = path.join(process.env.GITHUB_WORKSPACE, '.github', 'scripts', 'slack-notification.js');
             const script = fs.readFileSync(scriptPath, 'utf8');
+            
+            // Add the temp directory to the module search path
+            process.env.NODE_PATH = path.join(process.env.GITHUB_WORKSPACE, 'temp_slack_notification', 'node_modules');
+            require('module').Module._initPaths();
             
             const { sendSlackNotification } = await import(`data:text/javascript,${encodeURIComponent(script)}`);
             
@@ -66,4 +70,4 @@ jobs:
 
       - name: Clean up
         if: always()
-        run: rm -rf temp-package.json node_modules
+        run: rm -rf temp_slack_notification
