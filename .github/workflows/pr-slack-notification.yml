@@ -1,10 +1,12 @@
-name: PR Notification to Slack
+name: PR and Comment Notifications to Slack
 
 on:
   pull_request:
     types: [opened, reopened]
     branches:
       - main
+  issue_comment:
+    types: [created]
 
 jobs:
   notify-slack:
@@ -23,13 +25,30 @@ jobs:
           cd .github/scripts
           npm install
 
-      - name: Send Slack notification
+      - name: Send Slack notification for new PR
+        if: github.event_name == 'pull_request'
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.WEB_HOOK_URL }}
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_URL: ${{ github.event.pull_request.html_url }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REPO_NAME: ${{ github.repository }}
+          EVENT_TYPE: 'pr'
+        run: |
+          cd .github/scripts
+          node send-slack-notification.js
+
+      - name: Send Slack notification for new comment
+        if: github.event_name == 'issue_comment' && github.event.issue.pull_request
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.WEB_HOOK_URL }}
+          PR_TITLE: ${{ github.event.issue.title }}
+          PR_URL: ${{ github.event.issue.pull_request.html_url }}
+          PR_NUMBER: ${{ github.event.issue.number }}
+          COMMENTER: ${{ github.event.comment.user.login }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
+          COMMENT_URL: ${{ github.event.comment.html_url }}
+          EVENT_TYPE: 'comment'
         run: |
           cd .github/scripts
           node send-slack-notification.js
