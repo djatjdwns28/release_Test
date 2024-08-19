@@ -1,43 +1,7 @@
 const axios = require('axios');
-const moment = require('moment-timezone');
 
-async function isWorkingDay(date, timezone) {
-  const formattedDate = date.format('YYYY-MM-DD');
-  try {
-    const response = await axios.get(`https://date.nager.at/api/v3/publicholidays/${date.year()}/KR`);
-    const holidays = response.data.map(holiday => holiday.date);
-    return !holidays.includes(formattedDate) && ![0, 6].includes(date.day());
-  } catch (error) {
-    console.error('Error fetching holiday data:', error);
-    return ![0, 6].includes(date.day()); // Fallback to just weekend check
-  }
-}
-
-async function sendSlackNotification({ webhook, context, reviewers, customMessage }) {
-  const timezone = process.env.TIMEZONE || 'Asia/Seoul'
-  const workHoursStart = parseInt(process.env.WORK_HOURS_START || '9')
-  const workHoursEnd = parseInt(process.env.WORK_HOURS_END || '18')
-
-  const now = moment().tz(timezone)
-  const isWorkingHours = now.hour() >= workHoursStart && now.hour() < workHoursEnd
-
-  if (!(await isWorkingDay(now, timezone)) || !isWorkingHours) {
-    console.log('Not sending notification outside of working hours or on non-working days')
-    return
-  }
-
-  const prNumber = context.payload.pull_request
-      ? context.payload.pull_request.number
-      : context.payload.inputs.pr_number
-  const prTitle = context.payload.pull_request
-      ? context.payload.pull_request.title
-      : '제목을 지정하지 않았습니다.'
-  const prUrl = context.payload.pull_request
-      ? context.payload.pull_request.html_url
-      : `https://github.com/${context.repo.owner}/${context.repo.repo}/pull/${prNumber}`
-  const repo = context.repo.repo
-
-  const reviewerMentions = reviewers.map(reviewer => `<@${reviewer}>`).join(', ')
+const sendSlackNotification = async () => {
+  const { SLACK_WEBHOOK_URL, PR_TITLE, PR_URL, PR_NUMBER, REPO_NAME } = process.env;
 
   let message = {
     blocks: [
@@ -54,11 +18,11 @@ async function sendSlackNotification({ webhook, context, reviewers, customMessag
         fields: [
           {
             type: "mrkdwn",
-            text: `*저장소:*\n${repo}`
+            text: `*저장소:*\n${REPO_NAME}`
           },
           {
             type: "mrkdwn",
-            text: `*PR 번호:*\n#${prNumber}`
+            text: `*PR 번호:*\n#${PR_NUMBER}`
           }
         ]
       },
@@ -66,14 +30,14 @@ async function sendSlackNotification({ webhook, context, reviewers, customMessag
         type: "section",
         text: {
           type: "mrkdwn",
-          text: `*제목:*\n${prTitle}`
+          text: `*제목:*\n${PR_TITLE}`
         }
       },
       {
         type: "section",
         text: {
           type: "mrkdwn",
-          text: `*URL:*\n${prUrl}`
+          text: `*URL:*\n${PR_URL}`
         }
       },
       {
@@ -96,27 +60,15 @@ async function sendSlackNotification({ webhook, context, reviewers, customMessag
         ]
       }
     ]
-  }
-
-  if (customMessage) {
-    message.blocks.unshift({
-      type: "section",
-      text: {
-        type: "mrkdwn",
-        text: `*Custom Message:*\n${customMessage}`
-      }
-    }, {
-      type: "divider"
-    })
-  }
+  };
 
   try {
-    await axios.post(webhook, message)
-    console.log('Slack notification sent successfully')
+    await axios.post(SLACK_WEBHOOK_URL, message);
+    console.log('Slack notification sent successfully');
   } catch (error) {
-    console.error('Error sending Slack notification:', error)
-    throw error
+    console.error('Error sending Slack notification:', error);
+    process.exit(1);
   }
-}
+};
 
-module.exports = { sendSlackNotification };
+sendSlackNotification();

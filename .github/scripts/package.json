@@ -1,0 +1,9 @@
+{
+  "name": "pr-slack-notification",
+  "version": "1.0.0",
+  "description": "Script to send Slack notifications for new PRs",
+  "main": "send-slack-notification.js",
+  "dependencies": {
+    "axios": "^0.27.2"
+  }
+}
