@@ -8,6 +8,7 @@ on:
 jobs:
   notify:
     runs-on: ubuntu-latest
+    if: github.event.issue.pull_request != null || github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v2
 
@@ -16,8 +17,19 @@ jobs:
         with:
           node-version: '18'
 
+      - name: Create temporary package.json
+        run: |
+          echo '{
+            "name": "slack-notification",
+            "version": "1.0.0",
+            "dependencies": {
+              "axios": "^0.21.1",
+              "moment-timezone": "^0.5.33"
+            }
+          }' > temp-package.json
+
       - name: Install Dependencies
-        run: npm install axios moment-timezone
+        run: npm install --only=prod --prefix ./temp
 
       - name: Send Slack Notification
         uses: actions/github-script@v6
@@ -30,19 +42,29 @@ jobs:
             const scriptPath = path.join(process.env.GITHUB_WORKSPACE, '.github', 'scripts', 'slack-notification.js')
             const script = fs.readFileSync(scriptPath, 'utf8')
             
+            // Add the temp directory to the module search path
+            module.paths.unshift(path.join(process.env.GITHUB_WORKSPACE, 'temp', 'node_modules'))
+            
             eval(script)
             
-            const reviewers = '${{ github.event.inputs.reviewers }}'.split(',').filter(Boolean).map(r => r.trim())
+            let reviewers = [];
+            if (context.payload.pull_request && context.payload.pull_request.requested_reviewers) {
+              reviewers = context.payload.pull_request.requested_reviewers.map(reviewer => reviewer.login);
+            }
             
             await sendSlackNotification({
               webhook: process.env.SLACK_WEBHOOK_URL,
               context: context,
               reviewers: reviewers,
-              customMessage: '${{ github.event.inputs.message }}',
-              isManualTrigger: '${{ github.event_name }}' === 'workflow_dispatch'
+              customMessage: context.payload.pull_request ? context.payload.pull_request.title : '',
+              isManualTrigger: false
             })
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.WEB_HOOK_URL }}
           TIMEZONE: 'Asia/Seoul'
           WORK_HOURS_START: '9'
           WORK_HOURS_END: '18'
+
+      - name: Clean up
+        if: always()
+        run: rm -rf temp-package.json temp
