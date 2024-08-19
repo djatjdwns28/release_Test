@@ -56,11 +56,11 @@ jobs:
               process,
               __dirname: path.dirname(scriptPath),
               __filename: scriptPath,
-              module: { exports: {} }
+              global: {}
             };
             
             vm.runInNewContext(scriptContent, sandbox);
-            const { sendSlackNotification } = sandbox.module.exports;
+            const sendSlackNotification = sandbox.global.sendSlackNotification;
             
             let reviewers = [];
             if (context.payload.pull_request && context.payload.pull_request.requested_reviewers) {
@@ -71,8 +71,7 @@ jobs:
               webhook: process.env.SLACK_WEBHOOK_URL,
               context: context,
               reviewers: reviewers,
-              customMessage: context.payload.pull_request ? context.payload.pull_request.title : '',
-              isManualTrigger: false
+              customMessage: context.payload.pull_request ? context.payload.pull_request.title : ''
             });
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.WEB_HOOK_URL }}
