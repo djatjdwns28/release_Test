@@ -41,7 +41,7 @@ async function sendSlackNotification({
     : context.payload.inputs.pr_number;
   const prTitle = context.payload.pull_request
     ? context.payload.pull_request.title
-    : 'Manual notification';
+    : '제목을 지정하지 않았습니다.';
   const prUrl = context.payload.pull_request
     ? context.payload.pull_request.html_url
     : `https://github.com/${context.repo.owner}/${context.repo.repo}/pull/${prNumber}`;
