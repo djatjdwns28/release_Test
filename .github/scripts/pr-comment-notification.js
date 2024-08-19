@@ -40,7 +40,7 @@ async function sendPRCommentNotification({ webhook, context }) {
                     },
                     {
                         type: "mrkdwn",
-                        text: `*누가 적었게요~:*\n${commenter}`
+                        text: `*누가 적었게요~*\n${commenter}`
                     }
                 ]
             },
