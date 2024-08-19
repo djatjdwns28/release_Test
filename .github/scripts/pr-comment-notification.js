@@ -27,7 +27,7 @@ async function sendPRCommentNotification({ webhook, context }) {
                 type: "header",
                 text: {
                     type: "plain_text",
-                    text: `:speech_balloon: New Comment on PR #${prNumber}`,
+                    text: `:speech_balloon: 새로운 코멘트가 작성되었어요! - PR #${prNumber}`,
                     emoji: true
                 }
             },
@@ -40,7 +40,7 @@ async function sendPRCommentNotification({ webhook, context }) {
                     },
                     {
                         type: "mrkdwn",
-                        text: `*Commenter:*\n${commenter}`
+                        text: `*누가 적었게요~:*\n${commenter}`
                     }
                 ]
             },
@@ -48,7 +48,7 @@ async function sendPRCommentNotification({ webhook, context }) {
                 type: "section",
                 text: {
                     type: "mrkdwn",
-                    text: `*Comment:*\n${commentBody.length > 200 ? commentBody.substring(0, 197) + '...' : commentBody}`
+                    text: `*내용:*\n${commentBody.length > 200 ? commentBody.substring(0, 197) + '...' : commentBody}`
                 }
             },
             {
