@@ -1,17 +1,13 @@
-name: PR Comment and Review Notification
+name: PR Comment Notification
 
 on:
-  pull_request_review_comment:
-    types: [created]
-  pull_request_review:
-    types: [submitted]
   issue_comment:
     types: [created]
 
 jobs:
-  notify_on_pr_comment_or_review:
+  notify_on_pr_comment:
     runs-on: ubuntu-latest
-    if: github.event.issue.pull_request != null || github.event.pull_request != null
+    if: github.event.issue.pull_request != null
     steps:
       - uses: actions/checkout@v2
 
