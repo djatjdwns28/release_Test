@@ -119,4 +119,4 @@ async function sendSlackNotification({ webhook, context, reviewers, customMessag
   }
 }
 
-global.sendSlackNotification = sendSlackNotification
+module.exports = { sendSlackNotification };
