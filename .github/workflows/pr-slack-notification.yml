@@ -1,84 +1,82 @@
-name: Slack Notification
+name: Slack Notification for Pull Requests
 
 on:
   pull_request:
     types: [opened, reopened, ready_for_review]
-    branches: [ main ]
-  issue_comment:
-    types: [created]
+    branches: [main]
 
 jobs:
   notify:
     runs-on: ubuntu-latest
-    if: github.event.issue.pull_request != null || github.event_name == 'pull_request'
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Use Node.js
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v3
         with:
-          node-version: '18'
+          node-version: '20'
 
-      - name: Create temporary directory and package.json
+      - name: Create isolated package directory
         run: |
-          mkdir -p temp_slack_notification
-          echo '{
+          mkdir -p .github/slack_notification
+          cd .github/slack_notification
+          cat > package.json << EOF
+          {
             "name": "slack-notification",
             "version": "1.0.0",
             "dependencies": {
-              "axios": "^0.21.1",
-              "moment-timezone": "^0.5.33"
+              "axios": "^1.6.0",
+              "moment-timezone": "^0.5.43"
             }
-          }' > temp_slack_notification/package.json
+          }
+          EOF
+
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ runner.OS }}-node-${{ hashFiles('.github/slack_notification/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.OS }}-node-
 
       - name: Install Dependencies
-        run: npm install --omit=dev --prefix ./temp_slack_notification
+        run: |
+          cd .github/slack_notification
+          npm ci --only=production
 
       - name: Send Slack Notification
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         with:
-          github-token: ${{secrets.GIT_TOKEN}}
+          github-token: ${{secrets.GITHUB_TOKEN}}
           script: |
             const fs = require('fs');
             const path = require('path');
-            const vm = require('vm');
+            
+            // Add the isolated package directory to the module search path
+            process.env.NODE_PATH = path.join(process.env.GITHUB_WORKSPACE, '.github', 'slack_notification', 'node_modules');
+            require('module').Module._initPaths();
             
             const scriptPath = path.join(process.env.GITHUB_WORKSPACE, '.github', 'scripts', 'slack-notification.js');
             const scriptContent = fs.readFileSync(scriptPath, 'utf8');
             
-            // Add the temp directory to the module search path
-            process.env.NODE_PATH = path.join(process.env.GITHUB_WORKSPACE, 'temp_slack_notification', 'node_modules');
-            require('module').Module._initPaths();
+            const sendSlackNotification = eval(`(async () => { ${scriptContent}; return sendSlackNotification; })()`);
             
-            const sandbox = {
-              require,
-              console,
-              process,
-              __dirname: path.dirname(scriptPath),
-              __filename: scriptPath,
-              global: {}
-            };
+            const reviewers = context.payload.pull_request.requested_reviewers
+              ? context.payload.pull_request.requested_reviewers.map(reviewer => reviewer.login)
+              : [];
             
-            vm.runInNewContext(scriptContent, sandbox);
-            const sendSlackNotification = sandbox.global.sendSlackNotification;
-            
-            let reviewers = [];
-            if (context.payload.pull_request && context.payload.pull_request.requested_reviewers) {
-              reviewers = context.payload.pull_request.requested_reviewers.map(reviewer => reviewer.login);
+            try {
+              await sendSlackNotification({
+                webhook: process.env.SLACK_WEBHOOK_URL,
+                context: context,
+                reviewers: reviewers,
+                customMessage: context.payload.pull_request.title
+              });
+            } catch (error) {
+              core.setFailed(`Failed to send Slack notification: ${error.message}`);
             }
-            
-            await sendSlackNotification({
-              webhook: process.env.SLACK_WEBHOOK_URL,
-              context: context,
-              reviewers: reviewers,
-              customMessage: context.payload.pull_request ? context.payload.pull_request.title : ''
-            });
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.WEB_HOOK_URL }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           TIMEZONE: 'Asia/Seoul'
           WORK_HOURS_START: '9'
           WORK_HOURS_END: '18'
-
-      - name: Clean up
-        if: always()
-        run: rm -rf temp_slack_notification
