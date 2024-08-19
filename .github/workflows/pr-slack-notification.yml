@@ -4,6 +4,8 @@ on:
   pull_request:
     types: [opened, reopened, ready_for_review]
     branches: [ main ]
+  issue_comment:
+    types: [created]
 
 jobs:
   notify:
@@ -26,8 +28,7 @@ jobs:
             "dependencies": {
               "axios": "^0.21.1",
               "moment-timezone": "^0.5.33"
-            },
-            "type": "module"
+            }
           }' > temp_slack_notification/package.json
 
       - name: Install Dependencies
@@ -40,9 +41,8 @@ jobs:
           script: |
             const fs = require('fs');
             const path = require('path');
-            const { createRequire } = await import('module');
+            const vm = require('vm');
             
-            const require = createRequire(import.meta.url);
             const scriptPath = path.join(process.env.GITHUB_WORKSPACE, '.github', 'scripts', 'slack-notification.js');
             const scriptContent = fs.readFileSync(scriptPath, 'utf8');
             
@@ -50,7 +50,17 @@ jobs:
             process.env.NODE_PATH = path.join(process.env.GITHUB_WORKSPACE, 'temp_slack_notification', 'node_modules');
             require('module').Module._initPaths();
             
-            const { sendSlackNotification } = await import(`data:text/javascript,${encodeURIComponent(scriptContent)}`);
+            const sandbox = {
+              require,
+              console,
+              process,
+              __dirname: path.dirname(scriptPath),
+              __filename: scriptPath,
+              module: { exports: {} }
+            };
+            
+            vm.runInNewContext(scriptContent, sandbox);
+            const { sendSlackNotification } = sandbox.module.exports;
             
             let reviewers = [];
             if (context.payload.pull_request && context.payload.pull_request.requested_reviewers) {

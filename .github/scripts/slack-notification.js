@@ -1,5 +1,5 @@
-import axios from 'axios';
-import moment from 'moment-timezone';
+const axios = require('axios');
+const moment = require('moment-timezone');
 
 async function isWorkingDay(date, timezone) {
   const formattedDate = date.format('YYYY-MM-DD');
