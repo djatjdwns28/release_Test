@@ -45,7 +45,7 @@ async function sendSlackNotification({ webhook, context, reviewers, customMessag
         type: "header",
         text: {
           type: "plain_text",
-          text: ":rocket: 새로운 PR 알림",
+          text: "👋 새로운 PR이 생겼어요! 다들 확인 부탁드릴게요!",
           emoji: true
         }
       },
@@ -80,7 +80,7 @@ async function sendSlackNotification({ webhook, context, reviewers, customMessag
         type: "section",
         text: {
           type: "mrkdwn",
-          text: `*리뷰어:*\n${reviewerMentions}`
+          text: `*리뷰어:* @here`
         }
       },
       {
