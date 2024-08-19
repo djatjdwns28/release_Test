@@ -26,7 +26,7 @@ jobs:
             "dependencies": {
               "axios": "^0.21.1",
               "moment-timezone": "^0.5.33"
-            },
+            }
           }' > temp_slack_notification/package.json
 
       - name: Install Dependencies
